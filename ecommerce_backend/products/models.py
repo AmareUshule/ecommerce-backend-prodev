@@ -1,9 +1,20 @@
-# Create your models here.
+"""Product model definitions.
+
+This module contains `Product`, `ProductImage` and `ProductReview` model
+definitions used by the products API. Models include helpful indexes and
+properties such as `final_price` to reflect discounted pricing.
+"""
+
 from django.db import models
 from categories.models import Category, Brand
 from django.core.validators import MinValueValidator
 
 class Product(models.Model):
+    """Represents a sellable product with pricing and inventory.
+
+    The `final_price` property returns `discounted_price` when present
+    otherwise falls back to `price`.
+    """
     name = models.CharField(max_length=200)
     slug = models.SlugField(max_length=200, unique=True)
     sku = models.CharField(max_length=50, unique=True)
@@ -33,9 +44,11 @@ class Product(models.Model):
     
     @property
     def final_price(self):
+        """Return the effective price after discount if applicable."""
         return self.discounted_price if self.discounted_price else self.price
 
 class ProductImage(models.Model):
+    """Image associated with a `Product`. Marks one image as primary."""
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='images')
     image = models.ImageField(upload_to='products/')
     alt_text = models.CharField(max_length=200, blank=True)
@@ -46,6 +59,7 @@ class ProductImage(models.Model):
         ordering = ['-is_primary', 'created_at']
 
 class ProductReview(models.Model):
+    """Customer review for a `Product`, optionally approved by admin."""
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='reviews')
     user = models.ForeignKey('users.User', on_delete=models.CASCADE, related_name='reviews')
     rating = models.PositiveIntegerField(choices=[(i, i) for i in range(1, 6)])

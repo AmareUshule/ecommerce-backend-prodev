@@ -17,6 +17,10 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
+# Allow local and test hosts during development and automated smoke tests.
+if DEBUG:
+    ALLOWED_HOSTS += ['localhost', '127.0.0.1', 'testserver']
+
 # Application definition
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -29,6 +33,7 @@ INSTALLED_APPS = [
     # Third party apps
     'rest_framework',
     'rest_framework_simplejwt',
+    'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
     'drf_yasg',
     'django_filters',
@@ -83,6 +88,15 @@ DATABASES = {
         'PORT': '5432',
     }
 }
+
+# Use SQLite by default for local development if DB_ENGINE is not set to 'postgres'.
+if os.environ.get('DB_ENGINE', '').lower() != 'postgres':
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+        }
+    }
 
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
@@ -142,7 +156,7 @@ REST_FRAMEWORK = {
         'rest_framework.filters.OrderingFilter',
         'rest_framework.filters.SearchFilter',
     ],
-    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'DEFAULT_PAGINATION_CLASS': 'products.pagination.CustomPageNumberPagination',
     'PAGE_SIZE': 20
 }
 
@@ -163,3 +177,8 @@ CORS_ALLOWED_ORIGINS = [
 
 # Email Backend (for development)
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+# Silence ImageField Pillow check in environments where Pillow cannot be
+# built/installed (e.g., Windows without build tools). Remove this in
+# production or after installing Pillow.
+SILENCED_SYSTEM_CHECKS = ['fields.E210']

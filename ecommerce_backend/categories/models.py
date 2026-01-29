@@ -1,7 +1,13 @@
-# Create your models here.
+"""Category and Brand model definitions.
+
+Provides hierarchical categories (with optional parent) and simple
+brand records used to group products.
+"""
+
 from django.db import models
 
 class Category(models.Model):
+    """Product category supporting optional parent-child relations."""
     name = models.CharField(max_length=100, unique=True)
     slug = models.SlugField(max_length=100, unique=True)
     description = models.TextField(blank=True, null=True)
@@ -19,6 +25,7 @@ class Category(models.Model):
         return self.name
 
 class Brand(models.Model):
+    """Brand or manufacturer used to categorize products."""
     name = models.CharField(max_length=100, unique=True)
     slug = models.SlugField(max_length=100, unique=True)
     description = models.TextField(blank=True, null=True)

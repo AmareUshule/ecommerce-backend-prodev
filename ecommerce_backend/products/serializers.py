@@ -1,13 +1,27 @@
+"""Serializers for product models and API representations.
+
+This module defines serializers used by the products API: full and
+list representations for `Product`, plus serializers for `ProductImage`
+and `ProductReview` used by nested representations.
+"""
+
 from rest_framework import serializers
 from .models import Product, ProductImage, ProductReview
 from categories.serializers import CategorySerializer, BrandSerializer
+from categories.models import Category, Brand
 
 class ProductImageSerializer(serializers.ModelSerializer):
+    """Serializer for `ProductImage` model."""
     class Meta:
         model = ProductImage
         fields = ['id', 'image', 'alt_text', 'is_primary']
 
 class ProductReviewSerializer(serializers.ModelSerializer):
+    """Serializer for `ProductReview` model.
+
+    Exposes the reviewer as a readable string and marks the `user`
+    and approval fields as read-only for API-created reviews.
+    """
     user = serializers.StringRelatedField()
     
     class Meta:
@@ -16,6 +30,12 @@ class ProductReviewSerializer(serializers.ModelSerializer):
         read_only_fields = ['user', 'is_approved']
 
 class ProductSerializer(serializers.ModelSerializer):
+    """Detailed serializer for `Product` including relations.
+
+    Includes nested `Category`, `Brand`, `images` and `reviews`.
+    Accepts `category_id`/`brand_id` for writes while keeping nested
+    representations read-only.
+    """
     category = CategorySerializer(read_only=True)
     brand = BrandSerializer(read_only=True)
     images = ProductImageSerializer(many=True, read_only=True)
@@ -37,6 +57,11 @@ class ProductSerializer(serializers.ModelSerializer):
         read_only_fields = ['slug', 'final_price']
 
 class ProductListSerializer(serializers.ModelSerializer):
+    """Compact serializer used for product listing endpoints.
+
+    Exposes a `primary_image` helper field and lightweight
+    category/brand string fields for faster list responses.
+    """
     category = serializers.StringRelatedField()
     brand = serializers.StringRelatedField()
     primary_image = serializers.SerializerMethodField()
@@ -48,6 +73,7 @@ class ProductListSerializer(serializers.ModelSerializer):
                  'category', 'brand', 'stock_quantity', 'primary_image', 'is_featured']
     
     def get_primary_image(self, obj):
+        """Return the URL of the primary image or `None` if missing."""
         primary_image = obj.images.filter(is_primary=True).first()
         if primary_image:
             return primary_image.image.url

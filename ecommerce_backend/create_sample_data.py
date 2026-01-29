@@ -1,3 +1,9 @@
+"""Populate the database with a set of sample categories, brands and products.
+
+This helper is intended for local development to quickly seed the
+database with example data for manual testing and demos.
+"""
+
 import os
 import django
 
@@ -9,8 +15,9 @@ from products.models import Product, ProductImage
 from users.models import User
 
 print("Creating sample data...")
-
 # Create categories
+# The following blocks create a few top-level categories used by
+# sample products. `get_or_create` keeps this script idempotent.
 electronics, _ = Category.objects.get_or_create(
     name='Electronics',
     slug='electronics',
@@ -36,6 +43,8 @@ home_garden, _ = Category.objects.get_or_create(
 )
 
 # Create subcategories
+# Create a couple of subcategories to demonstrate hierarchy and
+# to use when assigning products below.
 smartphones, _ = Category.objects.get_or_create(
     name='Smartphones',
     slug='smartphones',
