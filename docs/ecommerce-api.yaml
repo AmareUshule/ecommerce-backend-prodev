@@ -1,0 +1,1188 @@
+openapi: 3.0.1
+info:
+  title: E-Commerce Backend API
+  description: |
+    Full-featured e-commerce backend for managing products, categories, brands, images, reviews, and users.
+    Includes secure JWT authentication and role-based access control for administrators.
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: amare@ushule.com
+servers:
+  - url: http://localhost:8000/api
+    description: Development server
+  - url: https://api.example.com/api
+    description: Production server
+tags:
+  - name: Authentication
+    description: JWT authentication endpoints
+  - name: Users
+    description: User management endpoints
+  - name: Products
+    description: Product management endpoints
+  - name: Categories
+    description: Category management endpoints
+  - name: Brands
+    description: Brand management endpoints
+  - name: Reviews
+    description: Product review endpoints
+paths:
+  # ==================== AUTHENTICATION ENDPOINTS ====================
+  /users/register/:
+    post:
+      tags:
+        - Authentication
+        - Users
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - email
+                - password
+                - password2
+              properties:
+                username:
+                  type: string
+                  minLength: 3
+                  maxLength: 150
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  format: password
+                  minLength: 8
+                password2:
+                  type: string
+                  format: password
+                  description: Password confirmation
+                first_name:
+                  type: string
+                  maxLength: 30
+                last_name:
+                  type: string
+                  maxLength: 30
+      responses:
+        '201':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  username:
+                    type: string
+                  email:
+                    type: string
+                  tokens:
+                    $ref: '#/components/schemas/TokenPair'
+        '400':
+          description: Invalid input data
+
+  /users/login/:
+    post:
+      tags:
+        - Authentication
+      summary: Login user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - password
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+                  format: password
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenPair'
+        '401':
+          description: Invalid credentials
+
+  /token/:
+    post:
+      tags:
+        - Authentication
+      summary: Obtain JWT token pair
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - password
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+                  format: password
+      responses:
+        '200':
+          description: Token pair obtained
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenPair'
+        '401':
+          description: Invalid credentials
+
+  /token/refresh/:
+    post:
+      tags:
+        - Authentication
+      summary: Refresh access token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - refresh
+              properties:
+                refresh:
+                  type: string
+                  description: Refresh token
+      responses:
+        '200':
+          description: New access token generated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access:
+                    type: string
+        '401':
+          description: Invalid or expired refresh token
+
+  /users/logout/:
+    post:
+      tags:
+        - Authentication
+      summary: Logout user (blacklist refresh token)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - refresh
+              properties:
+                refresh:
+                  type: string
+                  description: Refresh token to blacklist
+      responses:
+        '205':
+          description: Logout successful
+        '400':
+          description: Invalid refresh token
+        '401':
+          description: Unauthorized
+
+  # ==================== USER MANAGEMENT ENDPOINTS ====================
+  /users/profile/:
+    get:
+      tags:
+        - Users
+      summary: Get current user profile
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: User profile retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+        '401':
+          description: Unauthorized
+
+    put:
+      tags:
+        - Users
+      summary: Update user profile
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpdate'
+      responses:
+        '200':
+          description: Profile updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+        '400':
+          description: Invalid input data
+        '401':
+          description: Unauthorized
+
+    patch:
+      tags:
+        - Users
+      summary: Partial update user profile
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpdate'
+      responses:
+        '200':
+          description: Profile partially updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+        '400':
+          description: Invalid input data
+        '401':
+          description: Unauthorized
+
+  /users/change-password/:
+    post:
+      tags:
+        - Users
+      summary: Change user password
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - old_password
+                - new_password
+                - confirm_password
+              properties:
+                old_password:
+                  type: string
+                  format: password
+                new_password:
+                  type: string
+                  format: password
+                  minLength: 8
+                confirm_password:
+                  type: string
+                  format: password
+      responses:
+        '200':
+          description: Password changed successfully
+        '400':
+          description: Invalid input or passwords don't match
+        '401':
+          description: Unauthorized
+
+  # ==================== PRODUCT ENDPOINTS ====================
+  /products/:
+    get:
+      tags:
+        - Products
+      summary: List all products with filtering, searching, and sorting
+      parameters:
+        - name: category
+          in: query
+          schema:
+            type: string
+          description: Filter by category slug
+        - name: brand
+          in: query
+          schema:
+            type: string
+          description: Filter by brand slug
+        - name: featured
+          in: query
+          schema:
+            type: boolean
+          description: Filter featured products
+        - name: min_price
+          in: query
+          schema:
+            type: number
+            format: float
+            minimum: 0
+          description: Minimum price filter
+        - name: max_price
+          in: query
+          schema:
+            type: number
+            format: float
+            minimum: 0
+          description: Maximum price filter
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search term (name, description, SKU)
+        - name: ordering
+          in: query
+          schema:
+            type: string
+            enum: [price, -price, name, -name, created_at, -created_at]
+          description: Sort results
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+          description: Page number
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+          description: Items per page (max 100)
+      responses:
+        '200':
+          description: List of products
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: integer
+                  next:
+                    type: string
+                    nullable: true
+                  previous:
+                    type: string
+                    nullable: true
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ProductList'
+
+  /products/create/:
+    post:
+      tags:
+        - Products
+      summary: Create a new product (Admin only)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductCreate'
+      responses:
+        '201':
+          description: Product created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductDetail'
+        '400':
+          description: Invalid input data
+        '401':
+          description: Unauthorized
+        '403':
+          description: Admin access required
+
+  /products/{slug}/:
+    get:
+      tags:
+        - Products
+      summary: Retrieve a product by slug
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Product slug
+      responses:
+        '200':
+          description: Product details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductDetail'
+        '404':
+          description: Product not found
+
+  /products/{slug}/update/:
+    put:
+      tags:
+        - Products
+      summary: Update a product (Admin only)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Product slug
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductCreate'
+      responses:
+        '200':
+          description: Product updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductDetail'
+        '400':
+          description: Invalid input data
+        '401':
+          description: Unauthorized
+        '403':
+          description: Admin access required
+        '404':
+          description: Product not found
+
+    patch:
+      tags:
+        - Products
+      summary: Partial update a product (Admin only)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Product slug
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductUpdate'
+      responses:
+        '200':
+          description: Product partially updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductDetail'
+        '400':
+          description: Invalid input data
+        '401':
+          description: Unauthorized
+        '403':
+          description: Admin access required
+        '404':
+          description: Product not found
+
+  /products/{slug}/delete/:
+    delete:
+      tags:
+        - Products
+      summary: Delete a product (Admin only)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Product slug
+      responses:
+        '204':
+          description: Product deleted successfully
+        '401':
+          description: Unauthorized
+        '403':
+          description: Admin access required
+        '404':
+          description: Product not found
+
+  /products/{slug}/reviews/:
+    post:
+      tags:
+        - Products
+        - Reviews
+      summary: Create a review for a product (Authenticated users only)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Product slug
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - rating
+                - comment
+              properties:
+                rating:
+                  type: integer
+                  minimum: 1
+                  maximum: 5
+                comment:
+                  type: string
+                title:
+                  type: string
+      responses:
+        '201':
+          description: Review created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Review'
+        '400':
+          description: Invalid input data
+        '401':
+          description: Authentication required
+        '404':
+          description: Product not found
+
+    get:
+      tags:
+        - Products
+        - Reviews
+      summary: List all reviews for a product
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Product slug
+      responses:
+        '200':
+          description: List of reviews
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Review'
+
+  # ==================== CATEGORY ENDPOINTS ====================
+  /categories/:
+    get:
+      tags:
+        - Categories
+      summary: List all categories
+      parameters:
+        - name: parent
+          in: query
+          schema:
+            type: string
+            nullable: true
+          description: Filter by parent category slug (null for root categories)
+      responses:
+        '200':
+          description: List of categories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Category'
+
+    post:
+      tags:
+        - Categories
+      summary: Create a new category (Admin only)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryCreate'
+      responses:
+        '201':
+          description: Category created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+        '400':
+          description: Invalid input data
+        '401':
+          description: Unauthorized
+        '403':
+          description: Admin access required
+
+  /categories/{slug}/:
+    get:
+      tags:
+        - Categories
+      summary: Retrieve a category by slug
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Category slug
+      responses:
+        '200':
+          description: Category details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryDetail'
+        '404':
+          description: Category not found
+
+    put:
+      tags:
+        - Categories
+      summary: Update a category (Admin only)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Category slug
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryCreate'
+      responses:
+        '200':
+          description: Category updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+        '400':
+          description: Invalid input data
+        '401':
+          description: Unauthorized
+        '403':
+          description: Admin access required
+        '404':
+          description: Category not found
+
+    delete:
+      tags:
+        - Categories
+      summary: Delete a category (Admin only)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Category slug
+      responses:
+        '204':
+          description: Category deleted successfully
+        '401':
+          description: Unauthorized
+        '403':
+          description: Admin access required
+        '404':
+          description: Category not found
+
+  # ==================== BRAND ENDPOINTS ====================
+  /brands/:
+    get:
+      tags:
+        - Brands
+      summary: List all brands
+      responses:
+        '200':
+          description: List of brands
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Brand'
+
+    post:
+      tags:
+        - Brands
+      summary: Create a new brand (Admin only)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BrandCreate'
+      responses:
+        '201':
+          description: Brand created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Brand'
+        '400':
+          description: Invalid input data
+        '401':
+          description: Unauthorized
+        '403':
+          description: Admin access required
+
+  /brands/{slug}/:
+    get:
+      tags:
+        - Brands
+      summary: Retrieve a brand by slug
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Brand slug
+      responses:
+        '200':
+          description: Brand details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Brand'
+        '404':
+          description: Brand not found
+
+    put:
+      tags:
+        - Brands
+      summary: Update a brand (Admin only)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Brand slug
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BrandCreate'
+      responses:
+        '200':
+          description: Brand updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Brand'
+        '400':
+          description: Invalid input data
+        '401':
+          description: Unauthorized
+        '403':
+          description: Admin access required
+        '404':
+          description: Brand not found
+
+    delete:
+      tags:
+        - Brands
+      summary: Delete a brand (Admin only)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Brand slug
+      responses:
+        '204':
+          description: Brand deleted successfully
+        '401':
+          description: Unauthorized
+        '403':
+          description: Admin access required
+        '404':
+          description: Brand not found
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    TokenPair:
+      type: object
+      properties:
+        access:
+          type: string
+          description: JWT access token
+        refresh:
+          type: string
+          description: JWT refresh token
+      required:
+        - access
+        - refresh
+
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        first_name:
+          type: string
+        last_name:
+          type: string
+        date_joined:
+          type: string
+          format: date-time
+        is_staff:
+          type: boolean
+          description: Admin status
+
+    UserUpdate:
+      type: object
+      properties:
+        first_name:
+          type: string
+        last_name:
+          type: string
+        email:
+          type: string
+          format: email
+
+    ProductImage:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        image:
+          type: string
+          format: uri
+        alt_text:
+          type: string
+        is_default:
+          type: boolean
+
+    Review:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        user:
+          $ref: '#/components/schemas/UserProfile'
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+        comment:
+          type: string
+        title:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    ProductList:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+        slug:
+          type: string
+        description:
+          type: string
+        price:
+          type: number
+          format: float
+        discount_price:
+          type: number
+          format: float
+          nullable: true
+        category:
+          type: object
+          properties:
+            name:
+              type: string
+            slug:
+              type: string
+        brand:
+          type: object
+          properties:
+            name:
+              type: string
+            slug:
+              type: string
+        featured:
+          type: boolean
+        images:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductImage'
+        average_rating:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 5
+        review_count:
+          type: integer
+
+    ProductDetail:
+      allOf:
+        - $ref: '#/components/schemas/ProductList'
+        - type: object
+          properties:
+            sku:
+              type: string
+            stock_quantity:
+              type: integer
+            is_active:
+              type: boolean
+            created_at:
+              type: string
+              format: date-time
+            updated_at:
+              type: string
+              format: date-time
+            specifications:
+              type: object
+              additionalProperties:
+                type: string
+            reviews:
+              type: array
+              items:
+                $ref: '#/components/schemas/Review'
+
+    ProductCreate:
+      type: object
+      required:
+        - name
+        - description
+        - price
+        - category
+        - brand
+      properties:
+        name:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+        price:
+          type: number
+          format: float
+          minimum: 0
+        discount_price:
+          type: number
+          format: float
+          minimum: 0
+        category:
+          type: string
+          description: Category slug
+        brand:
+          type: string
+          description: Brand slug
+        sku:
+          type: string
+          maxLength: 50
+        stock_quantity:
+          type: integer
+          minimum: 0
+        featured:
+          type: boolean
+        is_active:
+          type: boolean
+        specifications:
+          type: object
+          additionalProperties:
+            type: string
+
+    ProductUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+        price:
+          type: number
+          format: float
+          minimum: 0
+        discount_price:
+          type: number
+          format: float
+          minimum: 0
+        category:
+          type: string
+          description: Category slug
+        brand:
+          type: string
+          description: Brand slug
+        sku:
+          type: string
+          maxLength: 50
+        stock_quantity:
+          type: integer
+          minimum: 0
+        featured:
+          type: boolean
+        is_active:
+          type: boolean
+        specifications:
+          type: object
+          additionalProperties:
+            type: string
+
+    Category:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+        slug:
+          type: string
+        description:
+          type: string
+        image:
+          type: string
+          format: uri
+          nullable: true
+        parent:
+          type: string
+          nullable: true
+          description: Parent category slug
+        is_active:
+          type: boolean
+
+    CategoryDetail:
+      allOf:
+        - $ref: '#/components/schemas/Category'
+        - type: object
+          properties:
+            children:
+              type: array
+              items:
+                $ref: '#/components/schemas/Category'
+
+    CategoryCreate:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+        image:
+          type: string
+          format: uri
+        parent:
+          type: string
+          nullable: true
+          description: Parent category slug
+        is_active:
+          type: boolean
+
+    Brand:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+        slug:
+          type: string
+        description:
+          type: string
+        logo:
+          type: string
+          format: uri
+          nullable: true
+        website:
+          type: string
+          format: uri
+          nullable: true
+        is_active:
+          type: boolean
+
+    BrandCreate:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+        logo:
+          type: string
+          format: uri
+        website:
+          type: string
+          format: uri
+        is_active:
+          type: boolean

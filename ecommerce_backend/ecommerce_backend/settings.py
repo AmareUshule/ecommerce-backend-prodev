@@ -5,21 +5,20 @@ Django settings for ecommerce_backend project.
 from pathlib import Path
 import os
 from datetime import timedelta
+from decouple import config, Csv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-your-secret-key-here-change-in-production'
+# Load from environment (.env) using python-decouple
+SECRET_KEY = config('SECRET_KEY', default='django-insecure-your-secret-key-here-change-in-production')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = config('DEBUG', default=False, cast=bool)
 
-ALLOWED_HOSTS = []
-
-# Allow local and test hosts during development and automated smoke tests.
-if DEBUG:
-    ALLOWED_HOSTS += ['localhost', '127.0.0.1', 'testserver']
+# Hosts can be provided as a comma separated list in the environment
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1', cast=Csv())
 
 # Application definition
 INSTALLED_APPS = [
@@ -81,16 +80,17 @@ WSGI_APPLICATION = 'ecommerce_backend.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'ecommerce_db',
-        'USER': 'mamare',
-        'PASSWORD': 'Mamare@2025@',
-        'HOST': 'localhost',
-        'PORT': '5432',
+        'NAME': config('POSTGRES_DB', default='ecommerce_db'),
+        'USER': config('POSTGRES_USER', default='postgres'),
+        'PASSWORD': config('POSTGRES_PASSWORD', default=''),
+        'HOST': config('POSTGRES_HOST', default='localhost'),
+        'PORT': config('POSTGRES_PORT', default='5432'),
     }
 }
 
 # Use SQLite by default for local development if DB_ENGINE is not set to 'postgres'.
-if os.environ.get('DB_ENGINE', '').lower() != 'postgres':
+DB_ENGINE = config('DB_ENGINE', default='sqlite').lower()
+if DB_ENGINE != 'postgres':
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
